@@ -1,0 +1,382 @@
+@import "tailwindcss";
+
+/* ===================================================
+   Ferrari Design System — Golf Score App
+   Inspired by ferrari.com: Chiaroscuro editorial,
+   razor-sharp 2px radii, restrained Rosso Corsa red.
+   =================================================== */
+
+@theme {
+  /* --- Primary --- */
+  --color-ferrari-red: #DA291C;
+  --color-pure-white: #FFFFFF;
+
+  /* --- Secondary / Accent --- */
+  --color-dark-red: #B01E0A;
+  --color-deep-red: #9D2211;
+  --color-racing-yellow: #FFF200;
+  --color-modena-yellow: #F6E500;
+
+  /* --- Surface & Background --- */
+  --color-absolute-black: #000000;
+  --color-dark-surface: #303030;
+  --color-light-gray: #D2D2D2;
+  --color-overlay-dark: hsla(0, 0%, 7%, 0.8);
+
+  /* --- Neutrals & Text --- */
+  --color-near-black: #181818;
+  --color-dark-gray: #666666;
+  --color-mid-gray: #8F8F8F;
+  --color-silver-gray: #969696;
+  --color-border-gray: #CCCCCC;
+
+  /* --- Semantic --- */
+  --color-warning: #F13A2C;
+  --color-success: #03904A;
+  --color-info: #4C98B9;
+  --color-link-hover: #3860BE;
+
+  /* --- Button Hover --- */
+  --color-teal: #1EAEDB;
+
+  /* --- Radius --- */
+  --radius-sharp: 2px;
+  --radius-dialog: 8px;
+
+  /* --- Font Family --- */
+  --font-ferrari: 'Inter', Arial, Helvetica, sans-serif;
+}
+
+/* ===================================================
+   Base Layer
+   =================================================== */
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: var(--font-ferrari);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-absolute-black);
+    color: var(--color-near-black);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Heading defaults */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-ferrari);
+    font-weight: 500;
+    letter-spacing: normal;
+    line-height: 1.20;
+  }
+
+  /* Body text */
+  p, span, label, li {
+    font-family: var(--font-ferrari);
+    font-weight: 400;
+  }
+
+  /* Link defaults */
+  a {
+    color: var(--color-near-black);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  a:hover {
+    color: var(--color-link-hover);
+  }
+}
+
+/* ===================================================
+   Component Utilities
+   =================================================== */
+
+/* Body-Font label: uppercase editorial captions */
+.label-upper {
+  font-family: var(--font-ferrari);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.27;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-mid-gray);
+}
+
+.label-micro {
+  font-family: var(--font-ferrari);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.27;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-mid-gray);
+}
+
+/* ===================================================
+   Button System
+   =================================================== */
+
+/* Primary CTA — White architectural button */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--color-pure-white);
+  color: var(--color-absolute-black);
+  font-family: var(--font-ferrari);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 1.28px;
+  padding: 12px 10px;
+  border: 1px solid var(--color-absolute-black);
+  border-radius: var(--radius-sharp);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+.btn-primary:hover {
+  background: var(--color-teal);
+  color: var(--color-pure-white);
+  border-color: var(--color-teal);
+  opacity: 0.9;
+}
+.btn-primary:focus-visible {
+  background: var(--color-teal);
+  color: var(--color-pure-white);
+  border: 1px solid var(--color-pure-white);
+  outline: 2px solid var(--color-absolute-black);
+  opacity: 0.9;
+}
+
+/* Subscribe CTA — Ferrari Red high-emphasis */
+.btn-ferrari {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--color-ferrari-red);
+  color: var(--color-pure-white);
+  font-family: var(--font-ferrari);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 1.28px;
+  padding: 12px 10px;
+  border: 1px solid var(--color-ferrari-red);
+  border-radius: var(--radius-sharp);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+.btn-ferrari:hover {
+  background: var(--color-dark-red);
+  border-color: var(--color-dark-red);
+}
+.btn-ferrari:active {
+  background: var(--color-deep-red);
+  border-color: var(--color-deep-red);
+}
+.btn-ferrari:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Ghost Button — White border on dark backgrounds */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--color-pure-white);
+  font-family: var(--font-ferrari);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 1.28px;
+  padding: 12px 10px;
+  border: 1px solid var(--color-pure-white);
+  border-radius: var(--radius-sharp);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+.btn-ghost:hover {
+  background: var(--color-teal);
+  border-color: var(--color-teal);
+  opacity: 0.9;
+}
+
+/* Small action button */
+.btn-small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ferrari);
+  font-size: 14.4px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border-gray);
+  border-radius: var(--radius-sharp);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--color-pure-white);
+  color: var(--color-near-black);
+}
+.btn-small:hover {
+  border-color: var(--color-near-black);
+}
+
+/* ===================================================
+   Input System
+   =================================================== */
+
+.input-ferrari {
+  width: 100%;
+  font-family: var(--font-ferrari);
+  font-size: 14px;
+  font-weight: 400;
+  padding: 12px 12px;
+  background: var(--color-pure-white);
+  color: var(--color-near-black);
+  border: 1px solid var(--color-border-gray);
+  border-radius: var(--radius-sharp);
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+.input-ferrari::placeholder {
+  color: var(--color-silver-gray);
+}
+.input-ferrari:focus {
+  border-color: var(--color-near-black);
+}
+
+.input-dark {
+  width: 100%;
+  font-family: var(--font-ferrari);
+  font-size: 14px;
+  font-weight: 400;
+  padding: 12px 12px;
+  background: transparent;
+  color: var(--color-pure-white);
+  border: 1px solid var(--color-border-gray);
+  border-radius: var(--radius-sharp);
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+.input-dark::placeholder {
+  color: var(--color-silver-gray);
+}
+.input-dark:focus {
+  border-color: var(--color-pure-white);
+}
+
+/* Select dropdown */
+.select-ferrari {
+  width: 100%;
+  font-family: var(--font-ferrari);
+  font-size: 14px;
+  font-weight: 400;
+  padding: 12px 12px;
+  background: var(--color-pure-white);
+  color: var(--color-near-black);
+  border: 1px solid var(--color-border-gray);
+  border-radius: var(--radius-sharp);
+  transition: border-color 0.2s ease;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+.select-ferrari:focus {
+  border-color: var(--color-near-black);
+}
+
+/* ===================================================
+   Surfaces
+   =================================================== */
+
+/* Dark cinematic surface */
+.surface-dark {
+  background: var(--color-absolute-black);
+  color: var(--color-pure-white);
+}
+
+/* Secondary dark surface (footer/panels) */
+.surface-dark-secondary {
+  background: var(--color-dark-surface);
+  color: var(--color-pure-white);
+}
+
+/* White editorial surface */
+.surface-light {
+  background: var(--color-pure-white);
+  color: var(--color-near-black);
+}
+
+/* ===================================================
+   Animations
+   =================================================== */
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.slide-up {
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.slide-up-delay-1 { animation-delay: 0.08s; }
+.slide-up-delay-2 { animation-delay: 0.16s; }
+.slide-up-delay-3 { animation-delay: 0.24s; }
+.slide-up-delay-4 { animation-delay: 0.32s; }
+
+/* Pulse ring for recording state */
+@keyframes pulseRing {
+  0%   { box-shadow: 0 0 0 0 rgba(218, 41, 28, 0.5); }
+  70%  { box-shadow: 0 0 0 14px rgba(218, 41, 28, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(218, 41, 28, 0); }
+}
+.pulse-ring {
+  animation: pulseRing 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ===================================================
+   Custom Scrollbar
+   =================================================== */
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-dark-surface);
+  border-radius: 2px;
+}

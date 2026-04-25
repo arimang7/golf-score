@@ -1,0 +1,6 @@
+{
+  "name": "kiwoom-domain-skill",
+  "version": "1.0.0",
+  "description": "Native integration with local Kiwoom API for KOSPI/KOSDAQ data.",
+  "type": "custom"
+}

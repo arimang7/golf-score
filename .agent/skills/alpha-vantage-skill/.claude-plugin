@@ -1,6 +1,0 @@
-{
-  "name": "alpha-vantage-skill",
-  "version": "1.0.0",
-  "description": "Global market data and technical indicators via Alpha Vantage.",
-  "type": "custom"
-}

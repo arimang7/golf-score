@@ -1,6 +1,0 @@
-{
-  "name": "composio-connector-skill",
-  "version": "1.0.0",
-  "description": "automated trading alerts via Slack, Discord, and Gmail.",
-  "type": "custom"
-}

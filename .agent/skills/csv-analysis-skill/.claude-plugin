@@ -1,6 +1,0 @@
-{
-  "name": "csv-analysis-skill",
-  "version": "1.0.0",
-  "description": "Advanced data analysis and visualization for CSV trading logs.",
-  "type": "custom"
-}

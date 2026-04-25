@@ -147,15 +147,18 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
     
     # 프론트엔드로 리다이렉트 (Vercel 도메인 판단)
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
-    protocol = request.headers.get("x-forwarded-proto", "http")
+    import os
+    is_vercel = os.getenv("VERCEL") == "1"
     
-    # 확실하게 프로덕션 환경인지 체크 (vercel.app 포함 여부 또는 localhost가 아님)
-    is_production = "vercel.app" in host or ("localhost" not in host and "127.0.0.1" not in host)
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    protocol = request.headers.get("x-forwarded-proto", "https" if is_vercel else "http")
+    
+    # 확실하게 프로덕션 환경인지 체크
+    is_production = is_vercel or "vercel.app" in host or ("localhost" not in host and "127.0.0.1" not in host)
     
     if is_production:
-         # 배포된 환경이라면 현재 요청이 들어온 도메인을 그대로 사용
-         redirect_target = f"{protocol}://{host}/"
+         # 배포된 환경이라면 HTTPS 강제 및 현재 호스트 사용
+         redirect_target = f"https://{host}/"
     else:
          redirect_target = "http://localhost:5173/"
 

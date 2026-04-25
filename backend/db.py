@@ -9,11 +9,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 if settings.TURSO_URL and settings.TURSO_TOKEN:
     # Turso DB 연동 (libsql 드라이버 사용)
-    db_url = settings.TURSO_URL
-    if db_url.startswith("libsql://"):
-        db_url = db_url.replace("libsql://", "sqlite+libsql://")
+    # URL 형식을 'sqlite+libsql://[host]?auth_token=[token]' 형태로 정교하게 구성
+    base_url = settings.TURSO_URL.replace("libsql://", "").replace("https://", "").replace("http://", "")
+    SQLALCHEMY_DATABASE_URL = f"sqlite+libsql://{base_url}?auth_token={settings.TURSO_TOKEN}"
     
-    SQLALCHEMY_DATABASE_URL = f"{db_url}?auth_token={settings.TURSO_TOKEN}"
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL, 
         connect_args={"check_same_thread": False}

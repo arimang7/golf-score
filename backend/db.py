@@ -12,28 +12,25 @@ if settings.TURSO_URL and settings.TURSO_TOKEN:
     clean_url = settings.TURSO_URL.replace("libsql://", "").replace("https://", "").replace("http://", "").strip("/")
     SQLALCHEMY_DATABASE_URL = f"sqlite+libsql://{clean_url}?auth_token={settings.TURSO_TOKEN}"
 
+    # Vercel 환경의 Turso 연결 안정성을 위한 엔진 설정
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         connect_args={"check_same_thread": False},
-        pool_pre_ping=True
+        # SQLAlchemy가 연결 시 격리 수준을 확인하기 위해 PRAGMA 명령을 날리는 것을 방지
+        isolation_level=None,
+        pool_pre_ping=False, # ping도 연결 초기에 에러를 유발할 수 있으므로 제거
+        execution_options={"isolation_level": "AUTOCOMMIT"} # 명시적인 트랜잭션 관리 방지
     )
-
-    # Vercel(Turso) 환경에서 PRAGMA 명령어로 인한 405 에러 방지
+    
+    # 더 강력하게 PRAGMA 실행 방지 (SQLite 방언 객체의 동작 강제 수정)
     @event.listens_for(engine, "connect")
     def do_connect(dbapi_connection, connection_record):
-        # sqlite3 모듈의 cursor 객체를 몽키패치하여 특정 PRAGMA를 무시하도록 처리
-        original_cursor = dbapi_connection.cursor
-        def _mocked_cursor(*args, **kwargs):
-            cursor = original_cursor(*args, **kwargs)
-            original_execute = cursor.execute
-            def _mocked_execute(sql, *a, **k):
-                if "PRAGMA read_uncommitted" in sql:
-                    return cursor
-                return original_execute(sql, *a, **k)
-            cursor.execute = _mocked_execute
-            return cursor
-        dbapi_connection.cursor = _mocked_cursor
-
+        # 방언(Dialect)의 isolation_level 관련 메서드를 빈 함수로 교체하여 PRAGMA 쿼리 차단
+        if hasattr(engine.dialect, 'get_isolation_level'):
+            engine.dialect.get_isolation_level = lambda dbapi_conn: "AUTOCOMMIT"
+        if hasattr(engine.dialect, 'set_isolation_level'):
+            engine.dialect.set_isolation_level = lambda dbapi_conn, level: None
+            
 else:
     # 로컬 SQLite 파일 연동
     SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'golf_score.db')}"

@@ -10,6 +10,14 @@ from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/rounds", tags=["rounds"])
 
+def get_approved_user(current_user: User = Depends(get_current_user)):
+    if not current_user.is_approved:
+        raise HTTPException(
+            status_code=403, 
+            detail="승인된 사용자만 이 기능을 사용할 수 있습니다. 관리자에게 승인을 요청하세요."
+        )
+    return current_user
+
 class RoundCreate(BaseModel):
     course_id: int
     date: datetime
@@ -22,11 +30,7 @@ class HoleScoreUpdate(BaseModel):
     score_d: Optional[int] = Field(None, ge=-1, le=10)
 
 @router.post("/")
-def create_round(data: RoundCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # 관리자 승인 확인
-    if not current_user.is_approved:
-        raise HTTPException(status_code=403, detail="승인된 사용자만 라운드를 생성할 수 있습니다.")
-
+def create_round(data: RoundCreate, db: Session = Depends(get_db), current_user: User = Depends(get_approved_user)):
     # 골프장 정보 가져오기 (홀 수 확인용)
     from backend.models.course import GolfCourse
     course = db.query(GolfCourse).filter(GolfCourse.id == data.course_id).first()
@@ -58,10 +62,7 @@ def create_round(data: RoundCreate, db: Session = Depends(get_db), current_user:
     }
 
 @router.get("/")
-def list_rounds(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if not current_user.is_approved:
-        return {"success": True, "data": [], "message": "승인 대기 중입니다."}
-
+def list_rounds(db: Session = Depends(get_db), current_user: User = Depends(get_approved_user)):
     # joinedload를 사용하여 N+1 문제 해결
     rounds = db.query(Round).options(joinedload(Round.course)).filter(Round.created_by == current_user.id).order_by(Round.date.desc()).all()
     
@@ -77,7 +78,7 @@ def list_rounds(db: Session = Depends(get_db), current_user: User = Depends(get_
     return {"success": True, "data": results}
 
 @router.get("/{round_id}")
-def get_round(round_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_round(round_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_approved_user)):
     round_data = db.query(Round).options(joinedload(Round.course)).filter(Round.id == round_id).first()
     if not round_data:
         raise HTTPException(status_code=404, detail="Round not found")
@@ -105,7 +106,7 @@ def update_hole_score(
     data: HoleScoreUpdate, 
     par: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_approved_user)
 ):
     round_data = db.query(Round).filter(Round.id == round_id).first()
     if not round_data:

@@ -7,8 +7,12 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: Optional[str] = None
     
     # Admin Credentials
-    ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "golf1234" # 실제 운영시에는 반드시 변경 및 .env.local로 관리
+    ADMIN_USERNAME: Optional[str] = "admin"
+    ADMIN_PASSWORD: Optional[str] = "golf1234"
+    
+    # Turso DB
+    TURSO_URL: Optional[str] = None
+    TURSO_TOKEN: Optional[str] = None
     
     # JWT
     JWT_SECRET: str = "your-secret-key-for-dev"

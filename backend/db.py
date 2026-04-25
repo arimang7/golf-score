@@ -8,21 +8,17 @@ from backend.config import settings
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 if settings.TURSO_URL and settings.TURSO_TOKEN:
-    # Turso DB 연동 (libsql 드라이버 사용)
-    clean_url = settings.TURSO_URL.replace("libsql://", "").replace("https://", "").replace("http://", "").strip("/")
-    SQLALCHEMY_DATABASE_URL = f"sqlite+libsql://{clean_url}?auth_token={settings.TURSO_TOKEN}"
+    # Turso DB 연동 — 공식 권장 방식
+    # URL 형식: sqlite+libsql://<hostname>?secure=true
+    # 인증: connect_args에 auth_token 전달
+    turso_url = settings.TURSO_URL  # libsql://golf-arimang7.aws-ap-northeast-1.turso.io
+    SQLALCHEMY_DATABASE_URL = f"sqlite+{turso_url}?secure=true"
 
     # ── SQLite 방언의 PRAGMA 호출을 사전 차단 ──
-    # SQLAlchemy의 SQLite 방언은 dialect.initialize() → get_default_isolation_level()
-    # → PRAGMA read_uncommitted 순서로 최초 연결 시 PRAGMA를 실행한다.
     # Turso(Hrana 프로토콜)는 PRAGMA를 지원하지 않으므로 405 에러가 발생.
-    # connect 이벤트는 initialize() 이후에 실행되므로 너무 늦다.
-    # → 방언 클래스 자체를 엔진 생성 전에 패치해야 한다.
     from sqlalchemy.dialects.sqlite.base import SQLiteDialect
 
     def _patched_initialize(self, connection):
-        # 원래 initialize()는 PRAGMA read_uncommitted 등을 실행하므로 완전 우회.
-        # 필요한 방언 속성만 수동 설정한다.
         self.get_isolation_level = lambda dbapi_conn: "AUTOCOMMIT"
         self.get_default_isolation_level = lambda dbapi_conn: "AUTOCOMMIT"
         self.set_isolation_level = lambda dbapi_conn, level: None
@@ -42,15 +38,13 @@ if settings.TURSO_URL and settings.TURSO_TOKEN:
     
     SQLiteDialect.initialize = _patched_initialize
 
-    # Vercel 환경의 Turso 연결 안정성을 위한 엔진 설정
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
-        connect_args={"check_same_thread": False},
+        connect_args={"auth_token": settings.TURSO_TOKEN},
         isolation_level=None,
         pool_pre_ping=False,
     )
 
-    # 연결 후에도 안전하게 PRAGMA 차단 유지
     @event.listens_for(engine, "connect")
     def do_connect(dbapi_connection, connection_record):
         engine.dialect.get_isolation_level = lambda dbapi_conn: "AUTOCOMMIT"

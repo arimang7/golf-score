@@ -9,16 +9,19 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 if settings.TURSO_URL and settings.TURSO_TOKEN:
     # Turso DB 연동 (libsql 드라이버 사용)
-    # URL에서 모든 프로토콜 접두사를 제거하고 순수 호스트만 추출
-    clean_url = settings.TURSO_URL.replace("libsql://", "").replace("https://", "").replace("http://", "").strip("/")
-    
-    # SQLAlchemy용 libsql URL 구성
-    SQLALCHEMY_DATABASE_URL = f"sqlite+libsql://{clean_url}?auth_token={settings.TURSO_TOKEN}"
+    # URL에서 프로토콜을 정리하여 드라이버가 정확히 인식하게 함
+    db_url = settings.TURSO_URL
+    if db_url.startswith("libsql://"):
+        db_url = db_url.replace("libsql://", "sqlite+libsql://")
+    elif not db_url.startswith("sqlite+libsql://"):
+        db_url = f"sqlite+libsql://{db_url.replace('https://', '').replace('http://', '')}"
+
+    SQLALCHEMY_DATABASE_URL = f"{db_url}?auth_token={settings.TURSO_TOKEN}"
     
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         connect_args={"check_same_thread": False},
-        echo=False # 배포 환경에서는 False 권장
+        pool_pre_ping=True # 연결 유효성 체크 추가
     )
 else:
     # 로컬 SQLite 파일 연동

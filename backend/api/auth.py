@@ -33,7 +33,7 @@ class UserApprovalRequest(BaseModel):
     is_approved: bool
 
 @router.post("/admin/login")
-async def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
+def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
     if data.username == settings.ADMIN_USERNAME and data.password == settings.ADMIN_PASSWORD:
         try:
             user = db.query(User).filter(User.email == "admin@internal").first()
@@ -58,7 +58,7 @@ async def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
                 httponly=True,
                 max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
                 samesite="lax",
-                secure=True # Vercel (HTTPS) 환경을 위해 추가
+                secure=True
             )
             return response
         except Exception as e:
@@ -146,30 +146,17 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
     # JWT 토큰 발급
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
     
-    # 프론트엔드로 리다이렉트 (Vercel 도메인 판단)
-    import os
-    is_vercel = os.getenv("VERCEL") == "1"
+    # 프론트엔드로 리다이렉트 (Vercel 도메인 판단 없이 상대 경로 사용)
+    response = RedirectResponse(url="/")
     
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
-    protocol = request.headers.get("x-forwarded-proto", "https" if is_vercel else "http")
-    
-    # 확실하게 프로덕션 환경인지 체크
-    is_production = is_vercel or "vercel.app" in host or ("localhost" not in host and "127.0.0.1" not in host)
-    
-    if is_production:
-         # 배포된 환경이라면 HTTPS 강제 및 현재 호스트 사용
-         redirect_target = f"https://{host}/"
-    else:
-         redirect_target = "http://localhost:5173/"
-
-    response = RedirectResponse(url=redirect_target)
+    protocol = request.headers.get("x-forwarded-proto", "http")
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         samesite="lax",
-        secure=True if protocol == "https" else False
+        secure=True if protocol == "https" or "vercel.app" in str(request.url) else False
     )
     return response
 

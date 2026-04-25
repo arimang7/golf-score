@@ -9,9 +9,49 @@ const VoiceInput = ({ onResult, onError }) => {
   const audioChunksRef = useRef([]);
 
   const startRecording = async () => {
+    // 1. mediaDevices API 지원 여부 체크
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (onError) onError('이 브라우저는 마이크를 지원하지 않습니다. Chrome이나 Safari를 사용해주세요.');
+      return;
+    }
+
+    // 2. 권한 상태 사전 체크 (지원되는 브라우저)
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const permStatus = await navigator.permissions.query({ name: 'microphone' });
+        if (permStatus.state === 'denied') {
+          if (onError) onError('마이크 권한이 차단되어 있습니다. 브라우저 설정 > 사이트 설정 > 마이크에서 허용해주세요.');
+          return;
+        }
+      }
+    } catch (e) {
+      // permissions.query를 지원하지 않는 브라우저 (Safari 등) — 무시하고 진행
+    }
+
+    // 3. 마이크 접근 요청
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // MediaRecorder 지원 확인
+      if (typeof MediaRecorder === 'undefined') {
+        stream.getTracks().forEach(track => track.stop());
+        if (onError) onError('이 브라우저는 녹음을 지원하지 않습니다.');
+        return;
+      }
+
+      // MIME 타입 결정 (브라우저 호환성)
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : MediaRecorder.isTypeSupported('audio/mp4')
+            ? 'audio/mp4'
+            : '';
+
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -22,8 +62,9 @@ const VoiceInput = ({ onResult, onError }) => {
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], 'voice.webm', { type: 'audio/webm' });
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
+        const audioFile = new File([audioBlob], `voice.${ext}`, { type: mimeType || 'audio/webm' });
 
         setIsProcessing(true);
         try {
@@ -44,8 +85,16 @@ const VoiceInput = ({ onResult, onError }) => {
       mediaRecorder.start();
       setIsRecording(true);
     } catch (error) {
-      console.error('Error accessing microphone:', error);
-      if (onError) onError('마이크 접근 권한이 필요합니다.');
+      console.error('Microphone error:', error.name, error.message);
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        if (onError) onError('마이크 권한을 허용해주세요. 주소창 왼쪽 🔒 아이콘을 눌러 마이크를 허용할 수 있습니다.');
+      } else if (error.name === 'NotFoundError') {
+        if (onError) onError('마이크가 감지되지 않습니다. 기기의 마이크를 확인해주세요.');
+      } else if (error.name === 'NotReadableError') {
+        if (onError) onError('마이크가 다른 앱에서 사용 중입니다.');
+      } else {
+        if (onError) onError(`마이크 오류: ${error.message}`);
+      }
     }
   };
 

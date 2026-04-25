@@ -1,5 +1,16 @@
 {
   "version": 2,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Permissions-Policy",
+          "value": "microphone=(self), camera=()"
+        }
+      ]
+    }
+  ],
   "builds": [
     {
       "src": "backend/main.py",

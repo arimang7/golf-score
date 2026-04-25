@@ -18,7 +18,7 @@ const HoleCard = ({ hole, players, onScoreChange, onBulkScoreChange }) => {
     setTimeout(() => setDebugText(""), 2000);
   };
 
-  const startVoiceInput = () => {
+  const startVoiceInput = async () => {
     if (isRecording) {
       stopVoiceInput();
       return;
@@ -26,7 +26,25 @@ const HoleCard = ({ hole, players, onScoreChange, onBulkScoreChange }) => {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("이 브라우저는 음성 인식을 지원하지 않습니다. Chrome을 사용해주세요.");
+      setDebugText("음성 인식 미지원");
+      setTimeout(() => setDebugText(""), 3000);
+      return;
+    }
+
+    // 모바일에서 SpeechRecognition 전에 마이크 권한을 먼저 획득
+    // (일부 모바일 브라우저는 getUserMedia 없이 SpeechRecognition 마이크 접근을 거부)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 권한 획득 후 즉시 해제 (SpeechRecognition이 자체적으로 마이크 사용)
+      stream.getTracks().forEach(track => track.stop());
+    } catch (e) {
+      console.error("[마이크 권한] 거부됨:", e.name);
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        setDebugText("마이크 허용 필요");
+      } else {
+        setDebugText("마이크 오류");
+      }
+      setTimeout(() => setDebugText(""), 4000);
       return;
     }
 
@@ -102,10 +120,16 @@ const HoleCard = ({ hole, players, onScoreChange, onBulkScoreChange }) => {
 
     recognition.onerror = (event) => {
       console.error("[음성 인식] 오류:", event.error);
-      if (event.error !== 'no-speech') {
-        setDebugText(`오류: ${event.error}`);
+      if (event.error === 'not-allowed') {
+        setDebugText("마이크 허용 필요 🔒");
+      } else if (event.error === 'no-speech') {
+        setDebugText("음성 감지 안됨");
+      } else if (event.error === 'network') {
+        setDebugText("네트워크 오류");
+      } else if (event.error === 'service-not-allowed') {
+        setDebugText("음성 서비스 차단됨");
       } else {
-         setDebugText("음성 감지 안됨");
+        setDebugText(`오류: ${event.error}`);
       }
       setIsRecording(false);
       setTimeout(() => setDebugText(""), 3000);

@@ -25,3 +25,13 @@ Thumbs.db
 
 # Logs
 *.log
+
+CLAUDE.md
+DESIGN.md
+prompt-init.md
+
+.gitignore
+
+test*.py
+
+.agent/

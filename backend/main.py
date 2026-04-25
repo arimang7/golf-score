@@ -1,11 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from backend.api import auth, courses, rounds, voice
 from backend.config import settings
 import uvicorn
 
 app = FastAPI(title="Golf Score API")
+
+# Vercel 등 프록시 환경에서 클라이언트 IP, 스킴(HTTPS), 호스트를 올바르게 인식하도록 설정
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
 # Authlib 세션 관리를 위한 미들웨어
 app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET)

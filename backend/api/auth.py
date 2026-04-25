@@ -63,7 +63,10 @@ def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
             return response
         except Exception as e:
             # DB 연동 등의 에러가 발생할 경우 500 에러의 원인을 상세히 반환
-            raise HTTPException(status_code=500, detail=f"Database or Server Error: {str(e)}")
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Admin Login Error: {error_details}")
+            raise HTTPException(status_code=500, detail=f"Database or Server Error: {str(e)}. Check server logs for full traceback.")
     
     raise HTTPException(status_code=401, detail="Invalid admin credentials")
 
@@ -146,17 +149,27 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
     # JWT 토큰 발급
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
     
-    # 프론트엔드로 리다이렉트 (Vercel 도메인 판단 없이 상대 경로 사용)
-    response = RedirectResponse(url="/")
+    # Vercel 환경인지 확인
+    is_vercel = "vercel.app" in str(request.url) or request.headers.get("x-vercel-id") is not None
     
-    protocol = request.headers.get("x-forwarded-proto", "http")
+    # 프론트엔드로 리다이렉트
+    if is_vercel:
+        # Vercel에서는 호스트 헤더를 직접 읽어 HTTPS로 강제 리다이렉트
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+        redirect_url = f"https://{host}/"
+    else:
+        # 로컬 환경
+        redirect_url = "http://localhost:5173/"
+
+    response = RedirectResponse(url=redirect_url)
+    
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         samesite="lax",
-        secure=True if protocol == "https" or "vercel.app" in str(request.url) else False
+        secure=is_vercel
     )
     return response
 

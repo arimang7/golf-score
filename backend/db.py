@@ -17,11 +17,11 @@ if settings.TURSO_URL and settings.TURSO_TOKEN:
         db_url = f"sqlite+libsql://{db_url.replace('https://', '').replace('http://', '')}"
 
     SQLALCHEMY_DATABASE_URL = f"{db_url}?auth_token={settings.TURSO_TOKEN}"
-    
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         connect_args={"check_same_thread": False},
-        pool_pre_ping=True # 연결 유효성 체크 추가
+        isolation_level=None, # Turso에서 지원하지 않는 PRAGMA 실행 방지
+        pool_pre_ping=True
     )
 else:
     # 로컬 SQLite 파일 연동

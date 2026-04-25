@@ -148,12 +148,15 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
     # JWT 토큰 발급
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
     
-    # 도메인 판단
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    # 도메인 판단 (Vercel 프록시 헤더 우선 순위)
+    x_forwarded_host = request.headers.get("x-forwarded-host")
+    host = x_forwarded_host or request.headers.get("host", "")
     is_vercel = "vercel.app" in host or "golf-score-self" in host
     
     # 프론트엔드로 리다이렉트 (배포 환경이면 HTTPS 강제)
-    if is_vercel:
+    if is_vercel and x_forwarded_host:
+        redirect_url = f"https://{x_forwarded_host}/"
+    elif is_vercel:
         redirect_url = f"https://{host}/"
     else:
         redirect_url = "http://localhost:5173/"
@@ -167,8 +170,8 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         samesite="lax",
-        secure=True if is_vercel else False,
-        domain=None # Vercel에서는 서브도메인간 공유를 위해 None 또는 명시적 도메인 필요
+        secure=True, # HTTPS 환경이므로 무조건 True 권장 (Vercel)
+        path="/"
     )
     return response
 

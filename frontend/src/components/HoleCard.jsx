@@ -73,6 +73,9 @@ const HoleCard = ({ hole, players, onScoreChange, onBulkScoreChange }) => {
 
     recognition.onspeechstart = () => console.log("[음성 인식] 목소리 감지됨");
 
+    // 디바운스 타이머 참조
+    let sendTimer = null;
+
     recognition.onresult = async (event) => {
       if (isProcessing) return; // Race condition 방지
 
@@ -85,8 +88,14 @@ const HoleCard = ({ hole, players, onScoreChange, onBulkScoreChange }) => {
 
       const isFinal = event.results[event.results.length - 1].isFinal;
       
-      // 프론트엔드에서는 단순 길이/종료 여부만 체크하여 서버로 전송
-      if (fullTranscript.split(' ').length >= players.length || isFinal) {
+      // 이전 타이머 취소
+      if (sendTimer) clearTimeout(sendTimer);
+
+      // isFinal이면 즉시 전송, 아니면 1.5초 대기 후 전송
+      const delay = isFinal ? 0 : 1500;
+      
+      sendTimer = setTimeout(async () => {
+        if (isProcessing) return;
         console.log("[음성 인식] 서버 분석 요청:", fullTranscript);
         
         setIsProcessing(true);
@@ -115,7 +124,7 @@ const HoleCard = ({ hole, players, onScoreChange, onBulkScoreChange }) => {
         } finally {
           setIsProcessing(false);
         }
-      }
+      }, delay);
     };
 
     recognition.onerror = (event) => {

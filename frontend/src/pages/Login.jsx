@@ -10,8 +10,9 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const handleGoogleLogin = () => {
-    // 백엔드 Google Login 엔드포인트로 리다이렉트
-    window.location.href = 'http://localhost:8000/auth/google/login';
+    // 배포 환경에서는 상대경로, 로컬에서는 localhost:8000
+    const baseURL = import.meta.env.PROD ? '' : 'http://localhost:8000';
+    window.location.href = `${baseURL}/auth/google/login`;
   };
 
   const handleAdminLogin = async (e) => {

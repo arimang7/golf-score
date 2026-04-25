@@ -48,8 +48,6 @@ if settings.TURSO_URL and settings.TURSO_TOKEN:
         connect_args={"check_same_thread": False},
         isolation_level=None,
         pool_pre_ping=False,
-        pool_size=0,  # 서버리스 환경: NullPool과 유사하게 동작
-        max_overflow=-1,
     )
 
     # 연결 후에도 안전하게 PRAGMA 차단 유지

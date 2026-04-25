@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from backend.config import settings
@@ -9,20 +9,31 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 if settings.TURSO_URL and settings.TURSO_TOKEN:
     # Turso DB 연동 (libsql 드라이버 사용)
-    # URL에서 프로토콜을 정리하여 드라이버가 정확히 인식하게 함
-    db_url = settings.TURSO_URL
-    if db_url.startswith("libsql://"):
-        db_url = db_url.replace("libsql://", "sqlite+libsql://")
-    elif not db_url.startswith("sqlite+libsql://"):
-        db_url = f"sqlite+libsql://{db_url.replace('https://', '').replace('http://', '')}"
+    clean_url = settings.TURSO_URL.replace("libsql://", "").replace("https://", "").replace("http://", "").strip("/")
+    SQLALCHEMY_DATABASE_URL = f"sqlite+libsql://{clean_url}?auth_token={settings.TURSO_TOKEN}"
 
-    SQLALCHEMY_DATABASE_URL = f"{db_url}?auth_token={settings.TURSO_TOKEN}"
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         connect_args={"check_same_thread": False},
-        isolation_level=None, # Turso에서 지원하지 않는 PRAGMA 실행 방지
         pool_pre_ping=True
     )
+
+    # Vercel(Turso) 환경에서 PRAGMA 명령어로 인한 405 에러 방지
+    @event.listens_for(engine, "connect")
+    def do_connect(dbapi_connection, connection_record):
+        # sqlite3 모듈의 cursor 객체를 몽키패치하여 특정 PRAGMA를 무시하도록 처리
+        original_cursor = dbapi_connection.cursor
+        def _mocked_cursor(*args, **kwargs):
+            cursor = original_cursor(*args, **kwargs)
+            original_execute = cursor.execute
+            def _mocked_execute(sql, *a, **k):
+                if "PRAGMA read_uncommitted" in sql:
+                    return cursor
+                return original_execute(sql, *a, **k)
+            cursor.execute = _mocked_execute
+            return cursor
+        dbapi_connection.cursor = _mocked_cursor
+
 else:
     # 로컬 SQLite 파일 연동
     SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'golf_score.db')}"

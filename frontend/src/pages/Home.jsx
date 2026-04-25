@@ -81,7 +81,7 @@ const Home = () => {
               <strong style={{ fontSize: '15px' }}>승인 대기 중</strong>
             </div>
             <p style={{ fontSize: '13px', color: '#666', lineHeight: 1.5 }}>
-              스코어카드를 작성하려면 관리자의 승인이 필요합니다. 관리자에게 문의해 주세요.
+              스코어카드를 작성하고 이전 기록을 확인하려면 관리자의 승인이 필요합니다. 승인 후 모든 기능을 이용하실 수 있습니다.
             </p>
           </div>
         ) : (
@@ -94,10 +94,12 @@ const Home = () => {
               padding: '16px 10px',
               fontSize: '16px',
               marginBottom: 32,
+              display: 'block',
+              textAlign: 'center'
             }}
             id="new-round-btn"
           >
-            <Plus size={18} strokeWidth={2} />
+            <Plus size={18} strokeWidth={2} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px' }} />
             새 라운드 시작
           </Link>
         )}

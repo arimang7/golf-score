@@ -4,9 +4,22 @@ from starlette.middleware.sessions import SessionMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from backend.api import auth, courses, rounds, voice
 from backend.config import settings
+from backend.db import engine, Base
+# 모든 모델을 import하여 Base.metadata에 등록
+from backend.models.user import User
+from backend.models.course import GolfCourse
+from backend.models.round import Round, RoundScore
 import uvicorn
 
 app = FastAPI(title="Golf Score API")
+
+# Turso DB인 경우 테이블 자동 생성 (서버리스 환경에서 필수)
+@app.on_event("startup")
+async def startup():
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"[WARN] Table creation skipped or failed: {e}")
 
 # Vercel 등 프록시 환경에서 클라이언트 IP, 스킴(HTTPS), 호스트를 올바르게 인식하도록 설정
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])

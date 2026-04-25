@@ -12,24 +12,51 @@ if settings.TURSO_URL and settings.TURSO_TOKEN:
     clean_url = settings.TURSO_URL.replace("libsql://", "").replace("https://", "").replace("http://", "").strip("/")
     SQLALCHEMY_DATABASE_URL = f"sqlite+libsql://{clean_url}?auth_token={settings.TURSO_TOKEN}"
 
+    # ── SQLite 방언의 PRAGMA 호출을 사전 차단 ──
+    # SQLAlchemy의 SQLite 방언은 dialect.initialize() → get_default_isolation_level()
+    # → PRAGMA read_uncommitted 순서로 최초 연결 시 PRAGMA를 실행한다.
+    # Turso(Hrana 프로토콜)는 PRAGMA를 지원하지 않으므로 405 에러가 발생.
+    # connect 이벤트는 initialize() 이후에 실행되므로 너무 늦다.
+    # → 방언 클래스 자체를 엔진 생성 전에 패치해야 한다.
+    from sqlalchemy.dialects.sqlite.base import SQLiteDialect
+
+    def _patched_initialize(self, connection):
+        # 원래 initialize()는 PRAGMA read_uncommitted 등을 실행하므로 완전 우회.
+        # 필요한 방언 속성만 수동 설정한다.
+        self.get_isolation_level = lambda dbapi_conn: "AUTOCOMMIT"
+        self.get_default_isolation_level = lambda dbapi_conn: "AUTOCOMMIT"
+        self.set_isolation_level = lambda dbapi_conn, level: None
+        self.default_isolation_level = "AUTOCOMMIT"
+        self.default_schema_name = None
+        self._broken_fk_pragma_quotes = False
+        self._broken_dotted_colnames = False
+        self.supports_default_values = True
+        self.supports_default_metavalue = False
+        self.supports_empty_insert = False
+        self.supports_cast = True
+        self.supports_multivalues_insert = True
+        self.supports_statement_cache = True
+        if not hasattr(self, 'server_version_info'):
+            self.server_version_info = (3, 35, 0)
+        self._is_oracle = False
+    
+    SQLiteDialect.initialize = _patched_initialize
+
     # Vercel 환경의 Turso 연결 안정성을 위한 엔진 설정
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         connect_args={"check_same_thread": False},
-        # SQLAlchemy가 연결 시 격리 수준을 확인하기 위해 PRAGMA 명령을 날리는 것을 방지
         isolation_level=None,
-        pool_pre_ping=False, # ping도 연결 초기에 에러를 유발할 수 있으므로 제거
-        execution_options={"isolation_level": "AUTOCOMMIT"} # 명시적인 트랜잭션 관리 방지
+        pool_pre_ping=False,
+        pool_size=0,  # 서버리스 환경: NullPool과 유사하게 동작
+        max_overflow=-1,
     )
-    
-    # 더 강력하게 PRAGMA 실행 방지 (SQLite 방언 객체의 동작 강제 수정)
+
+    # 연결 후에도 안전하게 PRAGMA 차단 유지
     @event.listens_for(engine, "connect")
     def do_connect(dbapi_connection, connection_record):
-        # 방언(Dialect)의 isolation_level 관련 메서드를 빈 함수로 교체하여 PRAGMA 쿼리 차단
-        if hasattr(engine.dialect, 'get_isolation_level'):
-            engine.dialect.get_isolation_level = lambda dbapi_conn: "AUTOCOMMIT"
-        if hasattr(engine.dialect, 'set_isolation_level'):
-            engine.dialect.set_isolation_level = lambda dbapi_conn, level: None
+        engine.dialect.get_isolation_level = lambda dbapi_conn: "AUTOCOMMIT"
+        engine.dialect.set_isolation_level = lambda dbapi_conn, level: None
             
 else:
     # 로컬 SQLite 파일 연동

@@ -127,21 +127,31 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
     try:
         user = db.query(User).filter(User.google_id == user_info['sub']).first()
         if not user:
-            # 첫 번째 유저라면 관리자로 자동 지정 (옵션)
-            user_count = db.query(User).count()
-            is_initial_admin = user_count == 0
-            
-            user = User(
-                google_id=user_info['sub'],
-                email=user_info['email'],
-                name=user_info.get('name'),
-                picture_url=user_info.get('picture'),
-                is_admin=is_initial_admin,
-                is_approved=is_initial_admin
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+            # google_id로 못 찾으면 email로도 검색 (기존 관리자 계정 등)
+            user = db.query(User).filter(User.email == user_info['email']).first()
+            if user:
+                # 기존 email 유저에 google_id 연결
+                user.google_id = user_info['sub']
+                user.name = user_info.get('name') or user.name
+                user.picture_url = user_info.get('picture') or user.picture_url
+                db.commit()
+                db.refresh(user)
+            else:
+                # 완전히 새로운 유저 생성
+                user_count = db.query(User).count()
+                is_initial_admin = user_count == 0
+                
+                user = User(
+                    google_id=user_info['sub'],
+                    email=user_info['email'],
+                    name=user_info.get('name'),
+                    picture_url=user_info.get('picture'),
+                    is_admin=is_initial_admin,
+                    is_approved=is_initial_admin
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database Error during user creation: {str(e)}")
 

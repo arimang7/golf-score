@@ -9,4 +9,5 @@ authlib
 httpx
 itsdangerous
 python-multipart
-libsql-experimental
+sqlalchemy-libsql
+libsql-experimental; sys_platform != 'win32'

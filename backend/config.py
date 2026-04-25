@@ -7,15 +7,15 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: Optional[str] = None
     
     # Admin Credentials
-    ADMIN_USERNAME: Optional[str] = "admin"
-    ADMIN_PASSWORD: Optional[str] = "golf1234"
+    ADMIN_USERNAME: Optional[str] = None
+    ADMIN_PASSWORD: Optional[str] = None
     
     # Turso DB
     TURSO_URL: Optional[str] = None
     TURSO_TOKEN: Optional[str] = None
     
     # JWT
-    JWT_SECRET: str = "your-secret-key-for-dev"
+    JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 

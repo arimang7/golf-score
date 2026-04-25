@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from backend.api import auth, courses, rounds, voice
+from backend.config import settings
 import uvicorn
 
 app = FastAPI(title="Golf Score API")

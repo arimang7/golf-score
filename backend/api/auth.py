@@ -35,30 +35,35 @@ class UserApprovalRequest(BaseModel):
 @router.post("/admin/login")
 async def admin_login(data: AdminLoginRequest, db: Session = Depends(get_db)):
     if data.username == settings.ADMIN_USERNAME and data.password == settings.ADMIN_PASSWORD:
-        user = db.query(User).filter(User.email == "admin@internal").first()
-        if not user:
-            user = User(
-                google_id="admin_manual",
-                email="admin@internal",
-                name="System Administrator",
-                is_admin=True,
-                is_approved=True
+        try:
+            user = db.query(User).filter(User.email == "admin@internal").first()
+            if not user:
+                user = User(
+                    google_id="admin_manual",
+                    email="admin@internal",
+                    name="System Administrator",
+                    is_admin=True,
+                    is_approved=True
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+            
+            access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
+            from fastapi.responses import JSONResponse
+            response = JSONResponse(content={"message": "Admin logged in", "success": True})
+            response.set_cookie(
+                key="access_token",
+                value=access_token,
+                httponly=True,
+                max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                samesite="lax",
+                secure=True # Vercel (HTTPS) 환경을 위해 추가
             )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-        
-        access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
-        from fastapi.responses import JSONResponse
-        response = JSONResponse(content={"message": "Admin logged in", "success": True})
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            samesite="lax"
-        )
-        return response
+            return response
+        except Exception as e:
+            # DB 연동 등의 에러가 발생할 경우 500 에러의 원인을 상세히 반환
+            raise HTTPException(status_code=500, detail=f"Database or Server Error: {str(e)}")
     
     raise HTTPException(status_code=401, detail="Invalid admin credentials")
 
@@ -93,8 +98,17 @@ async def approve_user(data: UserApprovalRequest, request: Request, db: Session 
 
 @router.get("/google/login")
 async def login(request: Request):
+    # 개발 환경과 배포 환경 구분
+    # Vercel은 보통 https를 사용하므로 X-Forwarded-Proto 등을 참조할 수도 있지만
+    # 가장 안전한 방법은 request.url_for를 그대로 쓰는 것입니다.
     redirect_uri = request.url_for('auth_callback')
-    return await oauth.google.authorize_redirect(request, str(redirect_uri))
+    
+    # 만약 Vercel 내부 라우팅 문제로 http로 잡힌다면 강제로 https로 변경
+    redirect_str = str(redirect_uri)
+    if "vercel.app" in redirect_str and redirect_str.startswith("http://"):
+        redirect_str = redirect_str.replace("http://", "https://")
+        
+    return await oauth.google.authorize_redirect(request, redirect_str)
 
 @router.get("/google/callback")
 async def auth_callback(request: Request, db: Session = Depends(get_db)):
@@ -108,35 +122,48 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Failed to fetch user info from Google")
 
     # DB에서 사용자 확인 및 생성
-    user = db.query(User).filter(User.google_id == user_info['sub']).first()
-    if not user:
-        # 첫 번째 유저라면 관리자로 자동 지정 (옵션)
-        user_count = db.query(User).count()
-        is_initial_admin = user_count == 0
-        
-        user = User(
-            google_id=user_info['sub'],
-            email=user_info['email'],
-            name=user_info.get('name'),
-            picture_url=user_info.get('picture'),
-            is_admin=is_initial_admin,
-            is_approved=is_initial_admin
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+    try:
+        user = db.query(User).filter(User.google_id == user_info['sub']).first()
+        if not user:
+            # 첫 번째 유저라면 관리자로 자동 지정 (옵션)
+            user_count = db.query(User).count()
+            is_initial_admin = user_count == 0
+            
+            user = User(
+                google_id=user_info['sub'],
+                email=user_info['email'],
+                name=user_info.get('name'),
+                picture_url=user_info.get('picture'),
+                is_admin=is_initial_admin,
+                is_approved=is_initial_admin
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database Error during user creation: {str(e)}")
 
     # JWT 토큰 발급
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
     
-    # 프론트엔드로 리다이렉트
-    response = RedirectResponse(url="http://localhost:5173")
+    # 프론트엔드로 리다이렉트 (Vercel 도메인 판단)
+    host = request.headers.get("host", "")
+    protocol = request.headers.get("x-forwarded-proto", "http")
+    
+    # Vercel 환경이면 동일한 호스트의 루트(/)로, 로컬이면 localhost:5173으로
+    if "vercel.app" in host or "localhost:8000" not in host and "127.0.0.1:8000" not in host:
+         redirect_target = f"{protocol}://{host}/"
+    else:
+         redirect_target = "http://localhost:5173/"
+
+    response = RedirectResponse(url=redirect_target)
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax"
+        samesite="lax",
+        secure=True if protocol == "https" else False
     )
     return response
 
